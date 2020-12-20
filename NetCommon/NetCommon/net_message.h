@@ -17,7 +17,7 @@ namespace rck
 			std::vector<uint8_t> body;
 
 			size_t size() const {
-				return sizeof(message_header<T>) + body.size();
+				return /*sizeof(message_header<T>) +*/ body.size();
 			}
 			friend std::ostream& operator<<(std::ostream& os, const message<T>& msg) {
 				os << "ID:" << int(msg.header.id) << " Size:" << msg.header.size;

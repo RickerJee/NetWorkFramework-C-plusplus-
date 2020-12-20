@@ -4,38 +4,101 @@
 #include <iostream>
 #include "rck_net.h"
 
-enum class CustomerMsgTypes : uint32_t
+enum class CustomerTypes :uint32_t {
+    ServerAccept,
+    ServerDeny,
+    ServerPing,
+    MessageAll,
+    ServerMessage,
+};
+
+class CustomerClient : public rck::net::client_interface<CustomerTypes>
 {
-    FireBullet,
-    MovePlayer
+public:
+    void PingServer()
+    {
+        rck::net::message<CustomerTypes> msg;
+        msg.header.id = CustomerTypes::ServerPing;
+
+        std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
+
+        msg << timeNow;
+        Send(msg);
+    }
+
+    void MessageAll()
+    {
+        rck::net::message<CustomerTypes> msg;
+        msg.header.id = CustomerTypes::MessageAll;
+        Send(msg);
+    }
 };
 
 int main()
 {
-    rck::net::message<CustomerMsgTypes> msg;
-    msg.header.id = CustomerMsgTypes::FireBullet;
+    CustomerClient c;
+    c.Connect("127.0.0.1", 60000);
+    bool bQuit = false;
 
-    int a = 1;
-    bool b = true;
-    float c = 3.1415;
+    bool key[3] = { false,false,false };
+    bool old_key[3] = { false,false,false };
 
-    struct
-    {
-        float x=4.5f;
-        float y=4.6f;
-    }d[5];
+    while (!bQuit) {
+        
+        if (GetForegroundWindow() == GetConsoleWindow())
+        {
+            key[0] = GetAsyncKeyState('1') & 0x8000;
+            key[1] = GetAsyncKeyState('2') & 0x8000;
+            key[2] = GetAsyncKeyState('3') & 0x8000;
+        }
 
-    //msg << a << b << c << d;
-    msg << d;
+        if (key[0] && !old_key[0]) c.PingServer();
+        if (key[1] && !old_key[1]) c.MessageAll();
 
-    a = 99;
-    b = false;
-    c = 90.0f;
+        if (key[2] && !old_key[2]) bQuit = true;
 
-    //msg >> d >> c >> b >> a;
-    msg >> d;
+        for (int i = 0; i < 3; ++i) old_key[i] = key[i];
 
+        if (c.IsConnected())
+        {
+            if (!c.Incoming().empty())
+            {
+                auto msg = c.Incoming().pop_front().msg;
 
-    std::cout << "Hello World!\n";
+                switch (msg.header.id)
+                {
+                case CustomerTypes::ServerAccept:
+                {
+                    std::cout << "Server Accept Connection\n";
+                    break;
+                }
+                case CustomerTypes::ServerPing:
+                {
+                    std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
+                    std::chrono::system_clock::time_point timeThen;
+                    msg >> timeThen;
+                    std::cout << "Ping: " << std::chrono::duration<double>(timeNow - timeThen).count() << "\n";
+                    break;
+                }
+                case CustomerTypes::ServerMessage:
+                {
+                    uint32_t clientID;
+                    msg >> clientID;
+                    std::cout << "Hello from [" << clientID << "]\n";
+                    break;
+                }
+
+                default:
+                    break;
+                }
+            }
+        }
+        else
+        {
+            std::cout << "Server Down\n";
+            bQuit = true;
+        }
+    }
+    return 0;
 }
 
