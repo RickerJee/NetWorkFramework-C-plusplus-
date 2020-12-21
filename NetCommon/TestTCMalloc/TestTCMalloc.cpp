@@ -3,6 +3,16 @@
 
 #include <iostream>
 #include <chrono>
+#include <memory>
+
+template< typename T >
+struct array_deleter
+{
+    void operator ()(const T * p)
+    {
+        delete[] p;
+    }
+};
 
 int main()
 {
@@ -33,5 +43,11 @@ int main()
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
 
-    std::cout << "Timer: "<<duration.count()/1000.0f <<" ms";
+    std::cout << "Timer: "<<duration.count()/1000.0f <<" ms\n";
+
+    std::unique_ptr<int[]> uni_ptr(new int[10]);
+    std::shared_ptr<int> sha_ptr(new int[10], [](int* p) {delete[]p; });
+    std::shared_ptr<int> sha_ptr2(new int[10], array_deleter<int>());
+
+    getchar();
 }
