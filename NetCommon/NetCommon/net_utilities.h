@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <algorithm>
 
 void ltrim(std::string &s) {
 	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
